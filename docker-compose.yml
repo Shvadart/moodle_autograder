@@ -1,0 +1,49 @@
+services:
+  mariadb:
+    image: mariadb:10.5
+    container_name: moodle_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: moodle
+      MYSQL_USER: moodleuser
+      MYSQL_PASSWORD: moodlepass
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  moodle:
+    image: bitnami/moodle:4
+    container_name: moodle
+    restart: always
+    depends_on:
+      - mariadb
+    ports:
+      - "8080:8080"
+    environment:
+      MOODLE_DATABASE_HOST: mariadb
+      MOODLE_DATABASE_PORT_NUMBER: 3306
+      MOODLE_DATABASE_USER: moodleuser
+      MOODLE_DATABASE_NAME: moodle
+      MOODLE_DATABASE_PASSWORD: moodlepass
+      MOODLE_USERNAME: admin
+      MOODLE_PASSWORD: Admin123!
+      MOODLE_EMAIL: admin@example.com
+    volumes:
+      - moodle_data:/bitnami/moodle
+      - moodledata:/bitnami/moodledata
+
+  evaluator:
+    build:
+      context: .
+    container_name: moodle_evaluator
+    depends_on:
+      - mariadb
+    env_file:
+      - .env
+
+volumes:
+  mariadb_data:
+  moodle_data:
+  moodledata:
