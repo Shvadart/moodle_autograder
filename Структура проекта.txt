@@ -1,0 +1,18 @@
+я сделал следующее
+
+project/
+│
+├── app/
+│   ├── main.py                 # основной Python-скрипт (без GUI)
+│   ├── evaluator.py            # логика оценки (GPT/DeepSeek)
+│   ├── moodle_db.py            # подключение и работа с БД Moodle
+│   └── requirements.txt        # зависимости
+│
+├── Dockerfile                  # Docker-файл для Python-программы
+├── docker-compose.yml          # запуск всех сервисов (Moodle, MariaDB, Python)
+└── .env                        # переменные окружения (ключи, пароли)
+docker exec -it moodle_db mysql -u moodleuser -pmoodlepass moodle
+docker logs -f moodle_evaluator
+docker-compose up -d
+docker-compose build
+docker-compose down
