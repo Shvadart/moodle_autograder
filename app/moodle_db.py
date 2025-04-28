@@ -78,7 +78,6 @@ def save_evaluation(attemptid, score, explanation=None):
     """, (attemptid, next_seq, state, int(time.time())))
 
     # Обновляем общую оценку по тесту
-        # Обновляем общую оценку по тесту
     cursor.execute("""
         SELECT SUM(maxfraction * qa.maxmark) as total
         FROM mdl_question_attempts qa
