@@ -10,7 +10,6 @@ def get_connection():
     )
 
 def get_pending_answers():
-    """Получает ответы студентов, которые можно автоматически оценить."""
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
@@ -22,14 +21,16 @@ def get_pending_answers():
     FROM mdl_question_attempts qa
     JOIN mdl_question_usages qu ON qa.questionusageid = qu.id
     JOIN mdl_quiz_attempts qza ON qza.uniqueid = qu.id
+    JOIN mdl_question q ON qa.questionid = q.id
     WHERE qa.behaviour = 'manualgraded'
       AND qa.responsesummary IS NOT NULL
-      AND qa.maxfraction = 1.0000000
+      AND qa.maxfraction = 1.0000000  # Только строго неоценённые
+      AND qa.flagged = 0  # Только необработанные
+      AND q.qtype = 'essay'
     """
 
     cursor.execute(query)
     results = cursor.fetchall()
-
     conn.close()
     return [(row["attemptid"], row["questionid"], row["responsesummary"]) for row in results]
 
@@ -40,7 +41,7 @@ def save_evaluation(attemptid, score, explanation=None):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-    score_fraction = round(score, 7)  # score уже от 0 до 1
+    score_fraction = min(0.9999999, round(score, 7))
     explanation_text = explanation or ""
 
     # Получаем данные по попытке, чтобы узнать questionusageid
@@ -58,7 +59,9 @@ def save_evaluation(attemptid, score, explanation=None):
     # Обновляем основную попытку
     cursor.execute("""
         UPDATE mdl_question_attempts
-        SET maxfraction = %s, rightanswer = %s
+        SET maxfraction = %s, 
+            rightanswer = %s,
+            flagged = 1  # Помечаем как обработанное
         WHERE id = %s
     """, (score_fraction, explanation_text, attemptid))
 
@@ -97,15 +100,17 @@ def save_evaluation(attemptid, score, explanation=None):
 
 def get_question_info(questionid):
     """
-    Возвращает текст вопроса и эталонный ответ (всегда из поля generalfeedback).
+    Возвращает текст вопроса и эталонный ответ.
+    Для эссе берет graderinfo, для остальных — generalfeedback.
     """
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
+    # Сначала получаем тип вопроса
     cursor.execute("""
-        SELECT questiontext, generalfeedback
-        FROM mdl_question
-        WHERE id = %s
+        SELECT q.questiontext, q.generalfeedback, q.qtype
+        FROM mdl_question q
+        WHERE q.id = %s
     """, (questionid,))
     row = cursor.fetchone()
 
@@ -115,6 +120,18 @@ def get_question_info(questionid):
 
     question_text = row["questiontext"]
     correct_answer = row["generalfeedback"] or ""
+    qtype = row["qtype"]
+
+    # Если вопрос — эссе, берем graderinfo
+    if qtype == "essay":
+        cursor.execute("""
+            SELECT graderinfo
+            FROM mdl_qtype_essay_options
+            WHERE questionid = %s
+        """, (questionid,))
+        essay_row = cursor.fetchone()
+        if essay_row and essay_row["graderinfo"]:
+            correct_answer = essay_row["graderinfo"]
 
     conn.close()
     return question_text, correct_answer
