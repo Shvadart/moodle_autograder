@@ -30,6 +30,10 @@ services:
       MOODLE_USERNAME: admin
       MOODLE_PASSWORD: Admin123!
       MOODLE_EMAIL: admin@example.com
+      MOODLE_LANG: ru
+      LANG: ru_RU.UTF-8
+      LC_ALL: ru_RU.UTF-8
+      MOODLE_EXTRA_INSTALL_COMMAND: "apt-get update && apt-get install -y locales && sed -i '/ru_RU.UTF-8/s/^# //g' /etc/locale.gen && locale-gen"
     volumes:
       - moodle_data:/bitnami/moodle
       - moodledata:/bitnami/moodledata
