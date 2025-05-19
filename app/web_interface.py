@@ -48,6 +48,36 @@ def stop_evaluator():
         return jsonify({'status': 'success', 'message': 'Проверка остановлена'})
     return jsonify({'status': 'error', 'message': 'Проверка не запущена'})
 
+@app.route('/update_grader_info', methods=['POST'])
+def handle_update_grader_info():
+    try:
+        question_id = int(request.form.get('question_id'))
+        grader_info = request.form.get('grader_info')
+        
+        from moodle_db import update_grader_info
+        success = update_grader_info(question_id, grader_info)
+        
+        if success:
+            # Принудительно обновляем кэш вопроса
+            from moodle_db import get_connection
+            conn = get_connection()
+            conn.close()
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'Эталонный ответ успешно сохранен'
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Ошибка при сохранении в БД'
+            })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Ошибка: {str(e)}'
+        })
+
 @app.route('/refresh_questions', methods=['POST'])
 def refresh_questions():
     try:

@@ -30,6 +30,32 @@
             color: #8a6d3b;
             border: 1px solid #faebcc;
         }
+        .grader-form {
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+        .grader-input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        .save-grader-btn {
+            padding: 5px 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .save-grader-btn:hover {
+            background: #45a049;
+        }
+        .save-grader-btn:disabled {
+            background: #cccccc;
+        }
     </style>
 </head>
 <body>
@@ -125,6 +151,39 @@
                 $('#status').html('Статус: Ошибка соединения с сервером');
             });
         }
+        $(document).ready(function() {
+            $(document).on('click', '.save-grader-btn', function() {
+                const btn = $(this);
+                const questionId = btn.data('question-id');
+                const graderInfo = btn.siblings('.grader-input').val();
+                const statusDiv = btn.siblings('.grader-status');
+                
+                if (!graderInfo.trim()) {
+                    statusDiv.html('<span style="color:red">Введите текст ответа</span>');
+                    return;
+                }
+                
+                btn.prop('disabled', true);
+                statusDiv.html('<span>Сохранение...</span>');
+                
+                $.post('/update_grader_info', {
+                    question_id: questionId,
+                    grader_info: graderInfo
+                }, function(data) {
+                    if(data.status === 'success') {
+                        statusDiv.html('<span style="color:green">Сохранено!</span>');
+                        // Через 2 секунды обновляем список
+                        setTimeout(refreshQuestions, 2000);
+                    } else {
+                        statusDiv.html(`<span style="color:red">Ошибка: ${data.message}</span>`);
+                        btn.prop('disabled', false);
+                    }
+                }).fail(function() {
+                    statusDiv.html('<span style="color:red">Ошибка сервера</span>');
+                    btn.prop('disabled', false);
+                });
+            });
+        });        
     </script>
 </body>
 </html>

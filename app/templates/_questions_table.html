@@ -16,8 +16,21 @@
                 <td>{{ question.name }}</td>
                 <td>{{ question.questiontext|safe }}</td>
                 <td>
-                    <div class="alert alert-warning" style="margin: 0; padding: 5px;">
-                        Удалите и создайте вопрос заново
+                    <div class="grader-form">
+                        <textarea class="grader-input" 
+                                  placeholder="Введите эталонный ответ для graderinfo" 
+                                  style="width: 100%; min-height: 80px; margin-bottom: 5px;"></textarea>
+                        <button class="save-grader-btn" 
+                                data-question-id="{{ question.id }}"
+                                style="margin-right: 5px;">
+                            Сохранить в graderinfo
+                        </button>
+                        <button class="recheck-btn"
+                                data-question-id="{{ question.id }}"
+                                style="background: #337ab7;">
+                            Проверить снова
+                        </button>
+                        <div class="grader-status" style="margin-top: 5px; font-size: 13px;"></div>
                     </div>
                 </td>
             </tr>
@@ -27,6 +40,6 @@
 </div>
 {% else %}
 <div class="alert alert-success">
-    Все вопросы имеют эталонные ответы!
+    Все вопросы имеют эталонные ответы в graderinfo!
 </div>
 {% endif %}

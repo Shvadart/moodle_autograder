@@ -51,33 +51,28 @@ def get_pending_answers():
     return [(row["attemptid"], row["questionid"], row["responsesummary"]) for row in results]
 
 def get_questions_without_answers():
-    """Получает список вопросов без эталонных ответов (финальная версия)"""
+    """Получает список вопросов без эталонных ответов в graderinfo"""
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
     
     query = """
-    SELECT 
-        q.id, 
-        q.name, 
-        q.questiontext,
-        q.generalfeedback,
-        e.graderinfo
+    SELECT q.id, q.name, q.questiontext
     FROM mdl_question q
     LEFT JOIN mdl_qtype_essay_options e ON q.id = e.questionid
     WHERE q.qtype = 'essay'
       AND q.parent = 0
       AND (
-          (e.graderinfo IS NULL OR e.graderinfo = '' OR e.graderinfo = '<p></p>')
+          e.graderinfo IS NULL 
+          OR e.graderinfo = '' 
+          OR e.graderinfo = '<p></p>'
+          OR e.graderinfo = '<p><br></p>'
+          OR e.id IS NULL
       )
     """
     
     cursor.execute(query)
     results = cursor.fetchall()
     conn.close()
-    
-    # Добавляем отладочную информацию
-    for row in results:
-        print(f"Вопрос ID {row['id']} - generalfeedback: {row['generalfeedback']}, graderinfo: {row['graderinfo']}")
     
     return results
 
@@ -162,6 +157,51 @@ def save_evaluation(attemptid, score, explanation=None):
 
     conn.commit()  # Фиксируем все изменения
     conn.close()
+
+def update_grader_info(question_id, grader_info):
+    """Обновляет graderinfo для указанного вопроса"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Проверяем, существует ли уже запись для этого вопроса
+        cursor.execute("""
+            SELECT id FROM mdl_qtype_essay_options 
+            WHERE questionid = %s
+        """, (question_id,))
+        exists = cursor.fetchone()
+        
+        if exists:
+            # Обновляем существующую запись (без timemodified)
+            cursor.execute("""
+                UPDATE mdl_qtype_essay_options 
+                SET graderinfo = %s,
+                    graderinfoformat = 1
+                WHERE questionid = %s
+            """, (grader_info, question_id))
+        else:
+            # Создаем новую запись (без timemodified)
+            cursor.execute("""
+                INSERT INTO mdl_qtype_essay_options 
+                (questionid, graderinfo, graderinfoformat, responseformat, responserequired, responsefieldlines)
+                VALUES (%s, %s, 1, 'editor', 1, 15)
+            """, (question_id, grader_info))
+        
+        # Обновим timemodified в основном вопросе
+        cursor.execute("""
+            UPDATE mdl_question
+            SET timemodified = UNIX_TIMESTAMP()
+            WHERE id = %s
+        """, (question_id,))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"Ошибка при обновлении graderinfo: {e}")
+        return False
+    finally:
+        conn.close()
 
 def get_question_info(questionid):
     """
