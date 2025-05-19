@@ -11,6 +11,25 @@
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
+        .alert {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+        margin-top: 15px;
+        }
+        .alert-success {
+            background-color: #dff0d8;
+            color: #3c763d;
+            border: 1px solid #d6e9c6;
+        }
+        .table-responsive {
+        margin-top: 15px;
+        }
+        .alert-warning {
+            background-color: #fcf8e3;
+            color: #8a6d3b;
+            border: 1px solid #faebcc;
+        }
     </style>
 </head>
 <body>
@@ -25,7 +44,8 @@
                 <button onclick="updateInterval()">Обновить</button>
             </div>
             <div style="margin-top: 10px;">
-                <button onclick="startEvaluator()">Запустить проверку</button>
+                <button id="startBtn" onclick="startEvaluator()">Запустить проверку</button>
+                <button id="stopBtn" onclick="stopEvaluator()" disabled>Завершить проверку</button>
             </div>
         </div>
         
@@ -33,22 +53,14 @@
             Статус: Ожидание действий
         </div>
         
-        <h2>Вопросы без эталонных ответов</h2>
+        <h2>Вопросы без эталонных ответов 
+            <button onclick="refreshQuestions()" style="font-size: 14px; padding: 2px 5px;">⟳ Обновить
+        </button>
+        </h2>
         {% if questions_without_answers %}
-        <table>
-            <tr>
-                <th>ID</th>
-                <th>Название</th>
-                <th>Текст вопроса</th>
-            </tr>
-            {% for question in questions_without_answers %}
-            <tr>
-                <td>{{ question.id }}</td>
-                <td>{{ question.name }}</td>
-                <td>{{ question.questiontext|safe }}</td>
-            </tr>
-            {% endfor %}
-        </table>
+        <div id="questions-container">
+            {% include '_questions_table.html' %}
+        </div>
         {% else %}
         <p>Все вопросы имеют эталонные ответы.</p>
         {% endif %}
@@ -67,12 +79,50 @@
         }
         
         function startEvaluator() {
+            $('#startBtn').prop('disabled', true);
+            $('#stopBtn').prop('disabled', false);
+            $('#status').html('Статус: Запуск проверки...');
+            
             $.post('/start_evaluator', function(data) {
                 if(data.status === 'success') {
                     $('#status').html('Статус: Проверка запущена');
                 } else {
                     $('#status').html('Статус: ' + data.message);
+                    $('#startBtn').prop('disabled', false);
                 }
+            });
+        }
+
+        function stopEvaluator() {
+            $('#stopBtn').prop('disabled', true);
+            $('#status').html('Статус: Остановка проверки...');
+            
+            $.post('/stop_evaluator', function(data) {
+                if(data.status === 'success') {
+                    $('#status').html('Статус: Проверка остановлена');
+                    $('#startBtn').prop('disabled', false);
+                } else {
+                    $('#status').html('Статус: ' + data.message);
+                    $('#stopBtn').prop('disabled', false);
+                }
+            });
+        }    
+    
+        function refreshQuestions() {
+            $('#status').html('Статус: Обновление списка вопросов...');
+            $.post('/refresh_questions', function(data) {
+                if(data.status === 'success') {
+                    $('#questions-container').html(data.html);
+                    if(data.count > 0) {
+                        $('#status').html(`Статус: Найдено ${data.count} вопросов с проблемами. Удалите и создайте их заново.`);
+                    } else {
+                        $('#status').html('Статус: Все вопросы в порядке!');
+                    }
+                } else {
+                    $('#status').html('Статус: Ошибка при обновлении - ' + data.message);
+                }
+            }).fail(function() {
+                $('#status').html('Статус: Ошибка соединения с сервером');
             });
         }
     </script>

@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from threading import Thread
+import threading
 import time
 from moodle_db import get_questions_without_answers
 import main as evaluator_main
@@ -9,6 +10,8 @@ app = Flask(__name__)
 # Глобальные настройки
 check_interval = 30  # секунд по умолчанию
 active_thread = None
+evaluator_running = False
+stop_event = threading.Event()
 
 @app.route('/')
 def index():
@@ -36,10 +39,43 @@ def start_evaluator():
         return jsonify({'status': 'success', 'message': 'Evaluator started'})
     return jsonify({'status': 'error', 'message': 'Evaluator already running'})
 
+@app.route('/stop_evaluator', methods=['POST'])
+def stop_evaluator():
+    global evaluator_running, stop_event
+    if evaluator_running:
+        stop_event.set()
+        evaluator_running = False
+        return jsonify({'status': 'success', 'message': 'Проверка остановлена'})
+    return jsonify({'status': 'error', 'message': 'Проверка не запущена'})
+
+@app.route('/refresh_questions', methods=['POST'])
+def refresh_questions():
+    try:
+        questions = get_questions_without_answers()
+        return jsonify({
+            'status': 'success',
+            'count': len(questions),  # Важно: передаем реальное количество
+            'html': render_template('_questions_table.html', 
+                                  questions_without_answers=questions)
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Ошибка обновления: {str(e)}',
+            'count': 0
+        })
+
 def run_evaluator():
-    while True:
+    global evaluator_running, stop_event
+    evaluator_running = True
+    stop_event.clear()
+    
+    while evaluator_running and not stop_event.is_set():
         evaluator_main.check_answers_once()
-        time.sleep(check_interval)
+        for _ in range(check_interval):
+            if stop_event.is_set():
+                break
+            time.sleep(1)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

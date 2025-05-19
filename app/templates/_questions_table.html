@@ -1,0 +1,32 @@
+{% if questions_without_answers and questions_without_answers|length > 0 %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Текст вопроса</th>
+                <th>Действие</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for question in questions_without_answers %}
+            <tr>
+                <td>{{ question.id }}</td>
+                <td>{{ question.name }}</td>
+                <td>{{ question.questiontext|safe }}</td>
+                <td>
+                    <div class="alert alert-warning" style="margin: 0; padding: 5px;">
+                        Удалите и создайте вопрос заново
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-success">
+    Все вопросы имеют эталонные ответы!
+</div>
+{% endif %}

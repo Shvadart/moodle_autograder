@@ -51,22 +51,33 @@ def get_pending_answers():
     return [(row["attemptid"], row["questionid"], row["responsesummary"]) for row in results]
 
 def get_questions_without_answers():
-    """Получает список вопросов без эталонных ответов"""
+    """Получает список вопросов без эталонных ответов (финальная версия)"""
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
     
     query = """
-    SELECT q.id, q.name, q.questiontext
+    SELECT 
+        q.id, 
+        q.name, 
+        q.questiontext,
+        q.generalfeedback,
+        e.graderinfo
     FROM mdl_question q
     LEFT JOIN mdl_qtype_essay_options e ON q.id = e.questionid
-    WHERE (q.generalfeedback IS NULL OR q.generalfeedback = '')
-      AND (e.graderinfo IS NULL OR e.graderinfo = '' OR e.id IS NULL)
-      AND q.qtype = 'essay'
+    WHERE q.qtype = 'essay'
+      AND q.parent = 0
+      AND (
+          (e.graderinfo IS NULL OR e.graderinfo = '' OR e.graderinfo = '<p></p>')
+      )
     """
     
     cursor.execute(query)
     results = cursor.fetchall()
     conn.close()
+    
+    # Добавляем отладочную информацию
+    for row in results:
+        print(f"Вопрос ID {row['id']} - generalfeedback: {row['generalfeedback']}, graderinfo: {row['graderinfo']}")
     
     return results
 

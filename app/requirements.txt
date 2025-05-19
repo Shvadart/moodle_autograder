@@ -1,5 +1,5 @@
+flask
 openai
 nltk
 python-dotenv
 mysql-connector-python
-flask
