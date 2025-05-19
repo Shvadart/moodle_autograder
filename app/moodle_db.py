@@ -50,6 +50,26 @@ def get_pending_answers():
     # Формируем список кортежей с нужными полями
     return [(row["attemptid"], row["questionid"], row["responsesummary"]) for row in results]
 
+def get_questions_without_answers():
+    """Получает список вопросов без эталонных ответов"""
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    query = """
+    SELECT q.id, q.name, q.questiontext
+    FROM mdl_question q
+    LEFT JOIN mdl_qtype_essay_options e ON q.id = e.questionid
+    WHERE (q.generalfeedback IS NULL OR q.generalfeedback = '')
+      AND (e.graderinfo IS NULL OR e.graderinfo = '' OR e.id IS NULL)
+      AND q.qtype = 'essay'
+    """
+    
+    cursor.execute(query)
+    results = cursor.fetchall()
+    conn.close()
+    
+    return results
+
 def save_evaluation(attemptid, score, explanation=None):
     """
     Сохраняет оценку ответа в базе данных Moodle и обновляет связанные данные.
