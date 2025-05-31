@@ -2,13 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY app/ /app/
+# Копируем все файлы из app/ в /app контейнера
+COPY ./app/ .
 
 RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install flask && \
     python -m nltk.downloader punkt wordnet
 
-# Создаем директорию для шаблонов
-RUN mkdir -p /app/templates
-
-CMD ["python", "-u", "web_interface.py"]
+# Дополнительный CMD для CLI (будет переопределен в docker-compose)
+CMD ["python", "web_interface.py"]

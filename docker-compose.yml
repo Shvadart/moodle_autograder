@@ -57,12 +57,12 @@ services:
       - mariadb
     env_file:
       - .env
-    command: python /app/app/cli_interface.py  # Укажите полный путь к файлу
-    working_dir: /app  # Рабочая директория
+    command: ["python", "/app/cli_interface.py"]  # Измененный путь
+    working_dir: /app
     tty: true
     stdin_open: true
     volumes:
-      - ./app:/app/app  # Монтируем папку app
+      - ./app:/app  # Измененное монтирование
 
 volumes:
   mariadb_data:
