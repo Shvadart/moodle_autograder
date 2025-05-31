@@ -1,16 +1,19 @@
 я сделал следующее
 
-project/
-│
-├── app/
-│   ├── main.py                 # основной Python-скрипт (без GUI)
-│   ├── evaluator.py            # логика оценки (GPT/DeepSeek)
-│   ├── moodle_db.py            # подключение и работа с БД Moodle
-│   └── requirements.txt        # зависимости
-│
-├── Dockerfile                  # Docker-файл для Python-программы
-├── docker-compose.yml          # запуск всех сервисов (Moodle, MariaDB, Python)
-└── .env                        # переменные окружения (ключи, пароли)
+app/
+├── templates/
+│   ├── index.html
+│   └── _question_table.html
+├── cli_interface.py
+├── evaluator.py
+├── main.py
+├── moodle_db.py
+├── requirements.txt
+└── web_interface.py
+docker-compose.yml
+Dockerfile
+.env
+
 docker exec -it moodle_db mysql -u moodleuser -pmoodlepass moodle
 docker logs -f moodle_evaluator
 docker-compose up -d

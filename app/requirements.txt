@@ -3,3 +3,4 @@ openai
 nltk
 python-dotenv
 mysql-connector-python
+questionary

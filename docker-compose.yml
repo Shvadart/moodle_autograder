@@ -45,12 +45,26 @@ services:
     depends_on:
       - mariadb
     ports:
-      - "5000:5000"  # Добавляем порт для Flask
+      - "5000:5000"
     env_file:
       - .env
+
+  evaluator-cli:
+    build:
+      context: .
+    container_name: moodle_evaluator_cli
+    depends_on:
+      - mariadb
+    env_file:
+      - .env
+    command: python /app/app/cli_interface.py  # Укажите полный путь к файлу
+    working_dir: /app  # Рабочая директория
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./app:/app/app  # Монтируем папку app
 
 volumes:
   mariadb_data:
   moodle_data:
   moodledata:
-
