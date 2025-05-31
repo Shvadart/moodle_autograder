@@ -84,16 +84,11 @@ def refresh_questions():
         questions = get_questions_without_answers()
         return jsonify({
             'status': 'success',
-            'count': len(questions),  # Важно: передаем реальное количество
-            'html': render_template('_questions_table.html', 
-                                  questions_without_answers=questions)
+            'count': len(questions),
+            'html': render_template('_questions_table.html', questions_without_answers=questions or [])
         })
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Ошибка обновления: {str(e)}',
-            'count': 0
-        })
+        return jsonify({'status': 'error', 'message': str(e), 'count': 0})
 
 def run_evaluator():
     global evaluator_running, stop_event

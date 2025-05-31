@@ -85,7 +85,11 @@
         </h2>
         {% if questions_without_answers %}
         <div id="questions-container">
-            {% include '_questions_table.html' %}
+            {% if questions_without_answers and questions_without_answers|length > 0 %}
+                {% include '_questions_table.html' %}
+            {% else %}
+                <p>Все вопросы имеют эталонные ответы.</p>
+            {% endif %}
         </div>
         {% else %}
         <p>Все вопросы имеют эталонные ответы.</p>
