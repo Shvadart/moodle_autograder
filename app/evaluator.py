@@ -65,7 +65,7 @@ def evaluate_answer(answer_text, question, correct_answer):
     try:
         # Отправляем запрос к OpenAI API
         response = client.chat.completions.create(
-            model="gpt-4",  # Используем модель GPT-4
+            model="gpt-4.1-mini",  # Используем модель GPT-4
             messages=[
                 {"role": "system", "content": "Ты — ассистент преподавателя, проверяющий ответы студентов."},
                 {"role": "user", "content": prompt}

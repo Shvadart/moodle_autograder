@@ -77,86 +77,76 @@ def get_questions_without_answers():
     return results
 
 def save_evaluation(attemptid, score, explanation=None):
-    """
-    Сохраняет оценку ответа в базе данных Moodle и обновляет связанные данные.
-    
-    Args:
-        attemptid (int): ID попытки ответа на вопрос
-        score (float): Оценка (должна быть между 0 и 1)
-        explanation (str, optional): Комментарий к оценке. По умолчанию None.
-    
-    Процесс:
-        1. Получает метаданные о попытке
-        2. Обновляет основную запись о попытке
-        3. Добавляет шаг оценки в историю попытки
-        4. Пересчитывает общую оценку за тест
-    """
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
 
-    # Нормализуем оценку (Moodle использует дробные значения от 0 до 1)
-    score_fraction = min(0.9999999, round(score, 7))  # Ограничиваем максимальную оценку
-    explanation_text = explanation or ""              # Используем пустую строку если explanation=None
+    score_fraction = min(0.9999999, round(score, 7))
+    explanation_text = explanation or ""
+    now_ts = int(time.time())
 
-    # 1. Получаем метаданные о попытке
+    # Получаем данные об использовании и maxmark
     cursor.execute("""
-        SELECT questionusageid, slot, questionid
+        SELECT questionusageid, questionid, maxmark
         FROM mdl_question_attempts
         WHERE id = %s
     """, (attemptid,))
-    attempt = cursor.fetchone()
+    qu = cursor.fetchone()
+    quba_id, questionid, maxmark = qu
 
-    questionusageid = attempt["questionusageid"]  # ID использования вопроса
-    slot = attempt["slot"]                        # Позиция вопроса в тесте
-    questionid = attempt["questionid"]            # ID вопроса
-
-    # 2. Обновляем основную запись о попытке
+    # Обновляем основную попытку
     cursor.execute("""
         UPDATE mdl_question_attempts
-        SET maxfraction = %s,         # Устанавливаем оценку
-            rightanswer = %s,         # Сохраняем комментарий
-            flagged = 1               # Помечаем как обработанное
+        SET maxfraction = %s, rightanswer = %s, flagged = 1
         WHERE id = %s
     """, (score_fraction, explanation_text, attemptid))
 
-    # 3. Получаем следующий номер шага для истории попытки
+    # Вычисляем следующий number шага
     cursor.execute("""
-        SELECT MAX(sequencenumber) as seq FROM mdl_question_attempt_steps
+        SELECT COALESCE(MAX(sequencenumber), 0) + 1
+        FROM mdl_question_attempt_steps
         WHERE questionattemptid = %s
     """, (attemptid,))
-    seq_row = cursor.fetchone()
-    next_seq = (seq_row["seq"] or 0) + 1  # Увеличиваем максимальный номер на 1
+    next_seq = cursor.fetchone()[0]
 
-    # Определяем состояние оценки на основе полученных баллов
+    # Определяем state
     state = 'gradedright' if score_fraction >= 0.9 else \
             'gradedpartial' if score_fraction >= 0.1 else \
             'gradedwrong'
 
-    # Добавляем шаг оценки в историю попытки
+    # Вставляем шаг с fraction
     cursor.execute("""
-        INSERT INTO mdl_question_attempt_steps 
-            (questionattemptid, sequencenumber, state, timecreated)
-        VALUES (%s, %s, %s, %s)
-    """, (attemptid, next_seq, state, int(time.time())))  # Текущее время в Unix timestamp
+        INSERT INTO mdl_question_attempt_steps
+            (questionattemptid, sequencenumber, state, timecreated, userid, fraction)
+        VALUES (%s, %s, %s, %s, COALESCE((SELECT quiz.userid FROM mdl_quiz_attempts quiz
+                                         JOIN mdl_question_attempts qa ON qa.questionusageid = quiz.uniqueid
+                                         WHERE qa.id = %s), 0),
+                %s)
+    """, (attemptid, next_seq, state, now_ts, attemptid, score_fraction))
+    step_id = cursor.lastrowid
 
-    # 4. Пересчитываем общую оценку за тест
+    # Добавляем параметры шага (ваше значение оценки и комментарий)
     cursor.execute("""
-        SELECT SUM(maxfraction * qa.maxmark) as total
-        FROM mdl_question_attempts qa
-        WHERE qa.questionusageid = %s
-    """, (questionusageid,))
+        INSERT INTO mdl_question_attempt_step_data (attemptstepid, name, value)
+        VALUES
+            (%s, ':-mark', %s),
+            (%s, ':-comment', %s)
+    """, (step_id, str(score_fraction), step_id, explanation_text))
 
-    total = cursor.fetchone()["total"] or 0.0  # Сумма всех оценок с учетом весов вопросов
-
-    # Обновляем общую оценку в попытке теста
+    # Пересчёт общей оценки теста
     cursor.execute("""
-        UPDATE mdl_quiz_attempts
-        SET sumgrades = %s
-        WHERE uniqueid = %s
-    """, (total, questionusageid))
+        UPDATE mdl_quiz_attempts qa
+        JOIN (
+            SELECT questionusageid, SUM(maxfraction * maxmark) AS total
+            FROM mdl_question_attempts
+            WHERE questionusageid = %s
+            GROUP BY questionusageid
+        ) AS sums ON qa.uniqueid = sums.questionusageid
+        SET qa.sumgrades = sums.total
+    """, (quba_id,))
 
-    conn.commit()  # Фиксируем все изменения
+    conn.commit()
     conn.close()
+
 
 def update_grader_info(question_id, grader_info):
     """Обновляет graderinfo для указанного вопроса"""
