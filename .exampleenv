@@ -1,0 +1,11 @@
+# MariaDB
+DB_HOST=example_mariadb
+DB_USER=example_moodleuser
+DB_PASSWORD=example_moodlepass
+DB_NAME=example_moodle
+
+
+
+# GPT API
+OPENAI_API_KEY=your_api_key_here
+OPENAI_BASE_URL=https://api.proxyapi.ru/openai/v1

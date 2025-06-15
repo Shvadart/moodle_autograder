@@ -1,5 +1,10 @@
 import mysql.connector
 import time
+import os
+from dotenv import load_dotenv
+#import psycopg2
+
+
 
 def get_connection():
     """
@@ -8,12 +13,20 @@ def get_connection():
     Returns:
         mysql.connector.connection.MySQLConnection: Объект соединения с БД
     """
+    load_dotenv()
     return mysql.connector.connect(
-        host="mariadb",          # Хост базы данных
-        user="moodleuser",       # Имя пользователя БД
-        password="moodlepass",   # Пароль пользователя БД
-        database="moodle"        # Название базы данных
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME")
     )
+# def get_connection():
+#     return psycopg2.connect(
+#         host=os.getenv("DB_HOST"),
+#         user=os.getenv("DB_USER"),
+#         password=os.getenv("DB_PASSWORD"),
+#         database=os.getenv("DB_NAME")
+#     )
 
 def get_pending_answers():
     """
